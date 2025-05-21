@@ -1,0 +1,8 @@
+io.rhythmknights.coreapi
+io.rhythmknights.coreapi.component.modal
+io.rhythmknights.coreapi.component.modal.builder.modal
+io.rhythmknights.coreapi.component.module
+io.rhythmknights.coreapi.component.module.exception
+io.rhythmknights.coreapi.component.module.nbt
+io.rhythmknights.coreapi.component.utility
+io.rhythmknights.coreapi.modal.builder.item
