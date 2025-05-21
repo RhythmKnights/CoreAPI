@@ -1,6 +1,6 @@
 # CoreAPI
 
-CoreAPI is a powerful and flexible framework designed for monitoring, versioning, and maintaining functionality of all CoreFramework plugins as well as creating interactive inventory menus in non-CoreFramework Bukkit/Spigot/Paper plugins. CoreAPI provides a clean, intuitive API for building simple to complex modal interfaces with advanced features like pagination, dynamic titles, and nested navigation.
+[CoreAPI](https://github.com/RhythmKnights/CoreAPI) is a powerful and flexible framework designed for monitoring, versioning, and maintaining functionality of all [CoreFramework](https://github.com/RhythmKnights/CoreFramework) plugins as well as creating interactive inventory menus in non-CoreFramework Bukkit/Spigot/Paper plugins. CoreAPI provides a clean, intuitive API for building simple to complex modal interfaces with advanced features like pagination, dynamic titles, and nested navigation.
 
 ## Terminology - Modals vs GUIs
 
