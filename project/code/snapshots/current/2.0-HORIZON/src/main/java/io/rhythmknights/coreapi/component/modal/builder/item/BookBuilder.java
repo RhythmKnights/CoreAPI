@@ -3,15 +3,15 @@
 //     ▪ Original Work - Copyright © 2021 TriumphTeam [TriumphGUI]
 //
 //     ⏵ Licensed under the MIT License.
-//         See LICENSE file in the project root for full license information.
+//         See LICENSE file in the project root for full license information.
 // ────────────────────────────────────────────────────────────────────────────▪
 
 package io.rhythmknights.coreapi.modal.builder.item;
 
 import io.rhythmknights.coreapi.component.module.exception.ModalException;
-import io.rhythmknights.coreapi.component.utility.Legacy;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
@@ -32,6 +32,13 @@ import java.util.List;
 public class BookBuilder extends BaseItemBuilder<BookBuilder> {
 
     private static final EnumSet<Material> BOOKS = EnumSet.of(Material.WRITABLE_BOOK, Material.WRITTEN_BOOK);
+    
+    // Use proper legacy serializer for book content
+    private static final LegacyComponentSerializer BOOK_SERIALIZER = LegacyComponentSerializer.builder()
+            .character('§')
+            .hexColors()
+            .useUnusualXRepeatedCharacterHexFormat()
+            .build();
 
     BookBuilder(@NotNull ItemStack itemStack) {
         super(itemStack);
@@ -58,7 +65,7 @@ public class BookBuilder extends BaseItemBuilder<BookBuilder> {
             return this;
         }
 
-        bookMeta.setAuthor(Legacy.SERIALIZER.serialize(author));
+        bookMeta.setAuthor(BOOK_SERIALIZER.serialize(author));
         setMeta(bookMeta);
         return this;
     }
@@ -108,7 +115,7 @@ public class BookBuilder extends BaseItemBuilder<BookBuilder> {
         final BookMeta bookMeta = (BookMeta) getMeta();
 
         for (final Component page : pages) {
-            bookMeta.addPage(Legacy.SERIALIZER.serialize(page));
+            bookMeta.addPage(BOOK_SERIALIZER.serialize(page));
         }
 
         setMeta(bookMeta);
@@ -134,7 +141,7 @@ public class BookBuilder extends BaseItemBuilder<BookBuilder> {
     public BookBuilder page(final int page, @NotNull final Component data) {
         final BookMeta bookMeta = (BookMeta) getMeta();
 
-        bookMeta.setPage(page, Legacy.SERIALIZER.serialize(data));
+        bookMeta.setPage(page, BOOK_SERIALIZER.serialize(data));
         setMeta(bookMeta);
         return this;
     }
@@ -159,7 +166,7 @@ public class BookBuilder extends BaseItemBuilder<BookBuilder> {
             return this;
         }
 
-        bookMeta.setTitle(Legacy.SERIALIZER.serialize(title));
+        bookMeta.setTitle(BOOK_SERIALIZER.serialize(title));
         setMeta(bookMeta);
         return this;
     }

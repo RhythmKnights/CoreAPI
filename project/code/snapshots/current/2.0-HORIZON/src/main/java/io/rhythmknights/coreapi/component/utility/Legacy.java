@@ -3,7 +3,7 @@
 //     ▪ Original Work - Copyright © 2021 TriumphTeam [TriumphGUI]
 //
 //     ⏵ Licensed under the MIT License.
-//         See LICENSE file in the project root for full license information.
+//         See LICENSE file in the project root for full license information.
 // ────────────────────────────────────────────────────────────────────────────▪
 
 package io.rhythmknights.coreapi.component.utility;
@@ -20,11 +20,22 @@ public final class Legacy {
 
     /**
      * Legacy serializer that handles &f and &#FFFFFF style color codes
+     * Uses & for input parsing but § for output (Bukkit compatibility)
      */
-    private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.builder()
+    private static final LegacyComponentSerializer LEGACY_INPUT_SERIALIZER = LegacyComponentSerializer.builder()
             .hexColors()
             .useUnusualXRepeatedCharacterHexFormat()
             .character('&')
+            .extractUrls()
+            .build();
+
+    /**
+     * Legacy serializer for output that uses § symbols (what Bukkit expects)
+     */
+    private static final LegacyComponentSerializer LEGACY_OUTPUT_SERIALIZER = LegacyComponentSerializer.builder()
+            .hexColors()
+            .useUnusualXRepeatedCharacterHexFormat()
+            .character('§')
             .extractUrls()
             .build();
 
@@ -37,8 +48,8 @@ public final class Legacy {
 
     /**
      * Creates a single serializer that supports multiple formats:
-     * 1. Legacy format (&f and &#FFFFFF)
-     * 2. MiniMessage format (<white> and <#FFFFFF>)
+     * 1. Legacy format ({@code &f} and {@code &#FFFFFF})
+     * 2. MiniMessage format ({@code <white>} and {@code <#FFFFFF>})
      * 
      * Usage:
      * - To convert a string with any supported format to a Component: SERIALIZER.deserialize(text)
@@ -57,40 +68,36 @@ public final class Legacy {
         /**
          * Converts a string with any combination of formatting styles to a Component
          * Supports:
-         * - Legacy format (&f and &#FFFFFF)
-         * - MiniMessage format (<white> and <#FFFFFF>)
+         * - Legacy format ({@code &f} and {@code &#FFFFFF})
+         * - MiniMessage format ({@code <white>} and {@code <#FFFFFF>})
          *
          * @param text Text with any supported formatting
          * @return Adventure Component with applied formatting
          */
         public @NotNull Component deserialize(@NotNull String text) {
-            // First handle legacy formatting (&f and &#FFFFFF)
-            Component component = LEGACY_SERIALIZER.deserialize(text);
-            
-            // Then parse the text for MiniMessage formatting (<white> and <#FFFFFF>)
-            String serialized = LEGACY_SERIALIZER.serialize(component);
-            
-            // Check if there might be MiniMessage formatting present
-            if (serialized.contains("<") && serialized.contains(">")) {
+            // Check if this looks like MiniMessage format
+            if (text.contains("<") && text.contains(">")) {
                 try {
-                    return MINI_MESSAGE.deserialize(serialized);
+                    // Try MiniMessage first for strings that look like they contain MiniMessage tags
+                    return MINI_MESSAGE.deserialize(text);
                 } catch (Exception ignored) {
-                    // If MiniMessage parsing fails, return the component with just legacy formatting
+                    // If MiniMessage parsing fails, fall back to legacy
                 }
             }
             
-            return component;
+            // Handle legacy formatting (&f and &#FFFFFF)
+            return LEGACY_INPUT_SERIALIZER.deserialize(text);
         }
 
         /**
-         * Serializes a Component to a string with legacy formatting
+         * Serializes a Component to a string with legacy formatting using § symbols
+         * This is what Bukkit inventories expect for proper color display
          *
          * @param component Component to serialize
-         * @return String with legacy formatting
+         * @return String with legacy formatting using § symbols
          */
         public @NotNull String serialize(@NotNull Component component) {
-            return LEGACY_SERIALIZER.serialize(component);
+            return LEGACY_OUTPUT_SERIALIZER.serialize(component);
         }
     }
 }
-

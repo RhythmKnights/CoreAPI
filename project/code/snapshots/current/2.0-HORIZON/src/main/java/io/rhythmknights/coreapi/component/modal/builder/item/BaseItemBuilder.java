@@ -3,7 +3,7 @@
 //     ▪ Original Work - Copyright © 2021 TriumphTeam [TriumphGUI]
 //
 //     ⏵ Licensed under the MIT License.
-//         See LICENSE file in the project root for full license information.
+//         See LICENSE file in the project root for full license information.
 // ────────────────────────────────────────────────────────────────────────────▪
 
 package io.rhythmknights.coreapi.modal.builder.item;
@@ -11,7 +11,6 @@ package io.rhythmknights.coreapi.modal.builder.item;
 import io.rhythmknights.coreapi.component.module.ModalAction;
 import io.rhythmknights.coreapi.component.module.exception.ModalException;
 import io.rhythmknights.coreapi.component.utility.ItemNBT;
-import io.rhythmknights.coreapi.component.utility.Legacy;
 import io.rhythmknights.coreapi.component.utility.VersionHelper;
 import io.rhythmknights.coreapi.component.modal.ModalItem;
 
@@ -19,6 +18,7 @@ import com.google.common.base.Preconditions;
 import net.kyori.adventure.platform.bukkit.MinecraftComponentSerializer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Material;
@@ -45,6 +45,9 @@ import java.util.stream.Collectors;
 
 /**
  * Contains all the common methods for the future ItemBuilders
+ * 
+ * This class expects Components to be pre-parsed by CoreFramework's TextUtility.
+ * CoreAPI handles ONLY GUI building - no text parsing.
  *
  * @param <B> The ItemBuilder type so the methods can cast to the subtype
  */
@@ -57,6 +60,13 @@ public abstract class BaseItemBuilder<B extends BaseItemBuilder<B>> {
 
     private static final Field DISPLAY_NAME_FIELD;
     private static final Field LORE_FIELD;
+
+    // Add legacy serializer for fallback cases
+    private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.builder()
+            .character('&')
+            .hexColors()
+            .useUnusualXRepeatedCharacterHexFormat()
+            .build();
 
     static {
         try {
@@ -84,9 +94,10 @@ public abstract class BaseItemBuilder<B extends BaseItemBuilder<B>> {
     }
 
     /**
-     * Serializes the component with the right {@link net.kyori.adventure.text.serializer.ComponentSerializer} for the current MC version
+     * Serializes the component with the right ComponentSerializer for the current MC version
+     * Expects Components to be pre-parsed by CoreFramework's TextUtility
      *
-     * @param component component to serialize
+     * @param component component to serialize (already parsed)
      * @return the serialized representation of the component
      */
     protected @NotNull Object serializeComponent(@NotNull final Component component) {
@@ -99,7 +110,7 @@ public abstract class BaseItemBuilder<B extends BaseItemBuilder<B>> {
     }
 
     /**
-     * Deserializes the object with the right {@link net.kyori.adventure.text.serializer.ComponentSerializer} for the current MC version
+     * Deserializes the object with the right ComponentSerializer for the current MC version
      *
      * @param obj object to deserialize
      * @return the component
@@ -115,8 +126,10 @@ public abstract class BaseItemBuilder<B extends BaseItemBuilder<B>> {
 
     /**
      * Sets the display name of the item using {@link Component}
+     * 
+     * Component should be pre-parsed by CoreFramework's TextUtility
      *
-     * @param name The {@link Component} name
+     * @param name The {@link Component} name (pre-parsed)
      * @return {@link ItemBuilder}
      * @since 3.0.0
      */
@@ -126,7 +139,8 @@ public abstract class BaseItemBuilder<B extends BaseItemBuilder<B>> {
         if (meta == null) return (B) this;
 
         if (VersionHelper.IS_COMPONENT_LEGACY) {
-            meta.setDisplayName(Legacy.SERIALIZER.serialize(name));
+            // For legacy versions, use the setDisplayName method directly
+            meta.setDisplayName(LEGACY_SERIALIZER.serialize(name));
             return (B) this;
         }
 
@@ -155,8 +169,10 @@ public abstract class BaseItemBuilder<B extends BaseItemBuilder<B>> {
 
     /**
      * Set the lore lines of an item
+     * 
+     * Components should be pre-parsed by CoreFramework's TextUtility
      *
-     * @param lore Lore lines as varargs
+     * @param lore Lore lines as varargs (pre-parsed)
      * @return {@link ItemBuilder}
      * @since 3.0.0
      */
@@ -168,8 +184,10 @@ public abstract class BaseItemBuilder<B extends BaseItemBuilder<B>> {
 
     /**
      * Set the lore lines of an item
+     * 
+     * Components should be pre-parsed by CoreFramework's TextUtility
      *
-     * @param lore A {@link List} with the lore lines
+     * @param lore A {@link List} with the lore lines (pre-parsed)
      * @return {@link ItemBuilder}
      * @since 3.0.0
      */
@@ -179,7 +197,11 @@ public abstract class BaseItemBuilder<B extends BaseItemBuilder<B>> {
         if (meta == null) return (B) this;
 
         if (VersionHelper.IS_COMPONENT_LEGACY) {
-            meta.setLore(lore.stream().filter(Objects::nonNull).map(Legacy.SERIALIZER::serialize).collect(Collectors.toList()));
+            // For legacy versions, use the setLore method directly
+            meta.setLore(lore.stream()
+                .filter(Objects::nonNull)
+                .map(LEGACY_SERIALIZER::serialize)
+                .collect(Collectors.toList()));
             return (B) this;
         }
 
@@ -199,6 +221,8 @@ public abstract class BaseItemBuilder<B extends BaseItemBuilder<B>> {
 
     /**
      * Consumer for freely adding to the lore
+     * 
+     * Components should be pre-parsed by CoreFramework's TextUtility
      *
      * @param lore A {@link Consumer} with the {@link List} of lore {@link Component}
      * @return {@link ItemBuilder}
@@ -212,12 +236,14 @@ public abstract class BaseItemBuilder<B extends BaseItemBuilder<B>> {
         List<Component> components;
         if (VersionHelper.IS_COMPONENT_LEGACY) {
             final List<String> stringLore = meta.getLore();
-            components = (stringLore == null) ? new ArrayList<>() : stringLore.stream().map(Legacy.SERIALIZER::deserialize).collect(Collectors.toList());
+            components = (stringLore == null) ? new ArrayList<>() : 
+                stringLore.stream().map(LEGACY_SERIALIZER::deserialize).collect(Collectors.toList());
         } else {
             try {
                 final List<Object> jsonLore = (List<Object>) LORE_FIELD.get(meta);
                 // The field is null by default ._.
-                components = (jsonLore == null) ? new ArrayList<>() : jsonLore.stream().map(this::deserializeComponent).collect(Collectors.toList());
+                components = (jsonLore == null) ? new ArrayList<>() : 
+                    jsonLore.stream().map(this::deserializeComponent).collect(Collectors.toList());
             } catch (IllegalAccessException exception) {
                 components = new ArrayList<>();
                 exception.printStackTrace();

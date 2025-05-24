@@ -2,17 +2,18 @@ plugins {
     id 'java'
     id 'java-library'
     id 'maven-publish'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'io.rhythmknights'
 version = '2.0-HORIZON'
-description = 'Integration library for CoreFramework plugins'
+description = 'GUI building API for CoreFramework plugins'
 
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
     withSourcesJar()
     withJavadocJar()
 }
@@ -20,20 +21,20 @@ java {
 repositories {
     mavenCentral()
     maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
-    maven { url = 'https://oss.sonatype.org/content/repositories/snapshots' }
     maven { url = 'https://repo.papermc.io/repository/maven-public/' }
-    maven { url = 'https://jitpack.io' }
-    maven { url = 'https://libraries.minecraft.net/' } // For Mojang authlib
+    maven { url = 'https://libraries.minecraft.net/' }
 }
 
 dependencies {
-    // Minecraft server API - use one of these
-    compileOnly 'org.spigotmc:spigot-api:1.20.1-R0.1-SNAPSHOT' // Using a more stable version
+    // Bukkit API
+    compileOnly 'org.spigotmc:spigot-api:1.21.5-R0.1-SNAPSHOT'
     
-    // Adventure for component text handling
-    api 'net.kyori:adventure-api:4.14.0' // Using slightly older, more compatible version
-    api 'net.kyori:adventure-text-minimessage:4.14.0'
-    api 'net.kyori:adventure-platform-bukkit:4.3.0'
+    // Adventure API - PROVIDED BY COREFRAMEWORK AT RUNTIME
+    compileOnly 'net.kyori:adventure-api:4.21.0'
+    compileOnly 'net.kyori:adventure-text-minimessage:4.21.0'
+    compileOnly 'net.kyori:adventure-platform-bukkit:4.4.0'
+    compileOnly 'net.kyori:adventure-text-serializer-gson:4.21.0'
+    compileOnly 'net.kyori:adventure-text-serializer-legacy:4.21.0'
     
     // Annotations
     compileOnly 'org.jetbrains:annotations:24.0.0'
@@ -47,8 +48,6 @@ dependencies {
 }
 
 processResources {
-    // Include plugin.yml with variables
-    inputs.property 'version', version
     filesMatching('plugin.yml') {
         expand(
             'version': version,
@@ -59,129 +58,47 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.release = 17 // Set to 17 for compatibility with most Minecraft servers
+    options.release = 17
     options.compilerArgs += ['-parameters']
 }
 
-// JavaDoc generation task
 javadoc {
     options.encoding = 'UTF-8'
     options.addStringOption('Xdoclint:none', '-quiet')
-    options.addStringOption('charset', 'UTF-8')
-    options.addStringOption('encoding', 'UTF-8')
-    options.addStringOption('docencoding', 'UTF-8')
+    title = "CoreAPI ${project.version}"
+}
+
+jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     
-    // Exclude package-info.java files if needed
-    exclude '**/package-info.java'
-    
-    // Link to external JavaDocs
-    options.links 'https://hub.spigotmc.org/javadocs/bukkit/'
-    options.links 'https://javadoc.io/doc/net.kyori/adventure-api/latest/'
-    options.links 'https://javadoc.io/doc/org.jetbrains/annotations/latest/'
-    
-    // Customize the output title
-    title = "CoreFrame API ${project.version}"
-    
-    // Improve output with better navigation
-    options {
-        docTitle = "CoreFrame API Documentation"
-        windowTitle = "CoreFrame ${project.version}"
-        bottom = "Copyright © ${new Date().format('yyyy')}. All rights reserved."
+    manifest {
+        attributes(
+            'Implementation-Title': 'CoreAPI',
+            'Implementation-Version': version,
+            'Built-By': System.properties['user.name']
+        )
     }
-}
-
-// Task to create a standalone documentation zip file
-task documentationZip(type: Zip, dependsOn: javadoc) {
-    archiveFileName = "CoreFrame-Documentation-${version}.zip"
-    destinationDirectory = file("${buildDir}/distributions")
-    
-    from javadoc.destinationDir
-}
-
-// Task to copy LICENSE.md and README.md to META-INF
-task copyMetaInfFiles(type: Copy) {
-    from 'LICENSE.md', 'README.md'
-    into "${buildDir}/tmp/meta-inf"
 }
 
 test {
     useJUnitPlatform()
 }
 
-// Set ShadowJar task to use the same Java compatibility level as the compile task
-shadowJar {
-    dependsOn copyMetaInfFiles
-    
-    archiveClassifier.set('')
-    
-    // Include LICENSE.md and README.md in META-INF
-    from("${buildDir}/tmp/meta-inf") {
-        into "META-INF"
-    }
-    
-    // Relocate dependencies if needed
-    relocate 'net.kyori.adventure', 'io.rhythmknights.coreframe.libs.adventure'
-    relocate 'net.kyori.examination', 'io.rhythmknights.coreframe.libs.examination'
-    
-    // Removed the minimize section completely to avoid issues
-    
-    // Configuration for manifest
-    manifest {
-        attributes(
-            'Implementation-Title': 'CoreFrame',
-            'Implementation-Version': version,
-            'Built-By': System.properties['user.name'],
-            'Created-By': "${System.properties['java.version']} (${System.properties['java.vendor']})",
-            'Build-Jdk': System.properties['java.version']
-        )
-    }
-}
-
-// Make sure all builds default to the shadowJar and documentationZip tasks
-assemble {
-    dependsOn shadowJar
-    dependsOn documentationZip
-}
-
-// Publishing configuration for Maven (optional)
+// Publishing configuration for library distribution
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
             
             pom {
-                name = 'CoreFrame API'
+                name = 'CoreAPI'
                 description = project.description
-                url = 'https://github.com/rhythmknights/CoreFrameAPI'
                 
-                licenses {
-                    license {
-                        name = 'MIT License'
-                        url = 'https://opensource.org/licenses/MIT'
-                    }
-                }
-                
-                developers {
-                    developer {
-                        id = 'rhythmknights'
-                        name = 'Rhythm Knights'
-                        email = 'io.rhythmknights@gmail.com'
-                    }
-                }
-                
-                scm {
-                    connection = 'scm:git:git://github.com/rhythmknights/CoreFrameAPI.git'
-                    developerConnection = 'scm:git:ssh://github.com:rhythmknights/CoreFrameAPI.git'
-                    url = 'https://github.com/rhythmknights/CoreFrameAPI'
-                }
+                properties = [
+                    'maven.compiler.source': '17',
+                    'maven.compiler.target': '17'
+                ]
             }
-        }
-    }
-    
-    repositories {
-        maven {
-            name = 'localRepo'
-            url = layout.buildDirectory.dir("repo")
         }
     }
 }
