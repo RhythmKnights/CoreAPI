@@ -28,20 +28,20 @@ repositories {
 dependencies {
     // Bukkit API
     compileOnly 'org.spigotmc:spigot-api:1.21.5-R0.1-SNAPSHOT'
-    
+
     // Adventure API - PROVIDED BY COREFRAMEWORK AT RUNTIME
     compileOnly 'net.kyori:adventure-api:4.21.0'
     compileOnly 'net.kyori:adventure-text-minimessage:4.21.0'
     compileOnly 'net.kyori:adventure-platform-bukkit:4.4.0'
     compileOnly 'net.kyori:adventure-text-serializer-gson:4.21.0'
     compileOnly 'net.kyori:adventure-text-serializer-legacy:4.21.0'
-    
+
     // Annotations
     compileOnly 'org.jetbrains:annotations:24.0.0'
-    
+
     // Mojang authlib for GameProfile and Property
     compileOnly 'com.mojang:authlib:1.5.25'
-    
+
     // Testing dependencies
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
@@ -62,15 +62,13 @@ tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-parameters']
 }
 
-javadoc {
-    options.encoding = 'UTF-8'
-    options.addStringOption('Xdoclint:none', '-quiet')
-    title = "CoreAPI ${project.version}"
-}
-
+// Configure Gradle's default 'jar' task
 jar {
+    dependsOn(project.tasks.compileJava) // Ensure compilation before jarring
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    
+    // Explicitly set the destination and file name
+    destinationDirectory = file("${buildDir}/libs")
+    archiveFileName = "${project.name}-${version}.jar"
     manifest {
         attributes(
             'Implementation-Title': 'CoreAPI',
@@ -78,6 +76,39 @@ jar {
             'Built-By': System.properties['user.name']
         )
     }
+    from sourceSets.main.output
+
+    // Error Logging for 'jar' task
+    doLast {
+        if (it.state.failure) {
+            ant.mkdir(dir: "${buildDir}/logs")
+            ant.echo(file: "${buildDir}/logs/error.jar.log", append: false, message: it.state.failure.exception.message)
+        }
+    }
+}
+
+// Configure Gradle's default 'javadoc' task
+javadoc {
+    source = sourceSets.main.allJava
+    classpath = sourceSets.main.compileClasspath
+    destinationDir = file("${buildDir}/docs/javadoc")
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+    title = "CoreAPI ${project.version}"
+
+    // Error Logging for 'javadoc' task
+    doLast {
+        if (it.state.failure) {
+            ant.mkdir(dir: "${buildDir}/logs")
+            ant.echo(file: "${buildDir}/logs/error.javadoc.log", append: false, message: it.state.failure.exception.message)
+        }
+    }
+}
+
+// Register the 'fullbuild' task to depend on default jar and javadoc tasks
+tasks.register('fullbuild') {
+    dependsOn tasks.javadoc
+    dependsOn tasks.jar
 }
 
 test {
@@ -89,11 +120,11 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            
+
             pom {
                 name = 'CoreAPI'
                 description = project.description
-                
+
                 properties = [
                     'maven.compiler.source': '17',
                     'maven.compiler.target': '17'
